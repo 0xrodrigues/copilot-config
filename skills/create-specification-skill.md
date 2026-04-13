@@ -1,6 +1,6 @@
 ---
 name: create-specification
-description: 'Lê um PRD e gera um conjunto de especificações prontas para IA, organizadas por tipo de trabalho (feature, bug, refactor), com IMPLEMENT.md como índice.'
+description: 'Lê um PRD e gera um conjunto de especificações prontas para IA, organizadas por tipo de trabalho (feature, bug, refactor), com IMPLEMENTATION.md como índice.'
 ---
 
 # Criar Especificações a partir de um PRD
@@ -27,7 +27,7 @@ Antes de criar qualquer arquivo, apresente ao usuário o plano com:
 3. A lista de specs planejadas no formato:
    - `spec-01-{titulo}.md` — [descrição de uma linha do escopo]
    - `spec-02-{titulo}.md` — [descrição de uma linha do escopo]
-4. A estrutura do `IMPLEMENT.md` que será gerado
+4. A estrutura do `IMPLEMENTATION.md` que será gerado
 
 Aguarde a confirmação do usuário antes de prosseguir para a Etapa 3.
 
@@ -38,14 +38,14 @@ Após a confirmação, crie todos os arquivos na seguinte estrutura:
 ```
 /specs/
   features/{feature-name}/
-    IMPLEMENT.md
+    IMPLEMENTATION.md
     spec-01-{titulo}.md
     spec-02-{titulo}.md
   bugs/{bug-name}/
-    IMPLEMENT.md
+    IMPLEMENTATION.md
     spec-01-{titulo}.md
   refactor/{refactor-name}/
-    IMPLEMENT.md
+    IMPLEMENTATION.md
     spec-01-{titulo}.md
 ```
 
@@ -60,9 +60,9 @@ Após a confirmação, crie todos os arquivos na seguinte estrutura:
 
 ---
 
-## IMPLEMENT.md — Índice e Registro de Implementação
+## IMPLEMENTATION.md — Índice e Registro de Implementação
 
-O `IMPLEMENT.md` é um documento vivo. Crie-o junto com as specs, preenchendo as seções de planejamento. As seções de registro serão preenchidas durante e após a implementação.
+O `IMPLEMENTATION.md` é um documento vivo. Crie-o junto com as specs, preenchendo as seções de planejamento. As seções de registro serão preenchidas durante e após a implementação.
 
 ```md
 ---
