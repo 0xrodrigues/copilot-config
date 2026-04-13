@@ -1,35 +1,106 @@
 ---
 name: create-specification
-description: 'Lê um PRD e gera um conjunto de especificações prontas para IA, organizadas por tipo de trabalho (feature, bug, refactor), com IMPLEMENTATION.md como índice.'
+description: 'Gera especificações prontas para IA a partir de um Design Document ou de uma descrição inline (modo express). Aceita o caminho de um arquivo existente ou inicia uma coleta rápida de informações diretamente na conversa. Compatível com os tipos feature, bug e refactor.'
 ---
 
-# Criar Especificações a partir de um PRD
+# Criar Especificações
 
-Seu objetivo é ler o arquivo `${input:PRDPath}` e gerar todas as especificações necessárias para que a IA possa implementar o trabalho com máximo controle de contexto e rastreabilidade.
+Seu objetivo é gerar todas as especificações necessárias para que a IA possa implementar o trabalho com máximo controle de contexto e rastreabilidade.
 
-## Etapa 1 — Leitura e Análise do PRD
+Esta skill opera em dois modos:
 
-Leia o arquivo informado em `${input:PRDPath}` na íntegra antes de qualquer outra ação.
+- **Modo arquivo**: recebe o caminho de um Design Document existente via `${input:DesignDocPath}` e gera as specs a partir dele.
+- **Modo express**: quando nenhum caminho é fornecido, coleta as informações mínimas diretamente na conversa e gera as specs sem precisar de arquivo.
 
-Identifique:
+---
+
+## Contexto do Projeto
+
+Antes de qualquer outra ação, tente ler o arquivo `ENGINEERING_STANDARDS.md` na raiz do projeto.
+
+- Se existir, extraia a stack tecnológica (linguagem, frameworks, banco de dados, mensageria) e os padrões arquiteturais relevantes.
+- Use essas informações para preencher as seções de estratégia de testes e dependências nas specs geradas.
+- Se não existir, prossiga normalmente — deixe as seções dependentes de stack com `[definir conforme stack do projeto]`.
+
+---
+
+## Etapa 1 — Identificação do Modo
+
+Verifique o valor de `${input:DesignDocPath}`:
+
+- Se for um caminho de arquivo válido (ex.: `docs/design-docs/features/minha-feature.md`), ative o **Modo Arquivo**.
+- Se estiver vazio, em branco, ou o usuário informar que não tem um Design Document (ex.: "não tenho", "express", "-"), ative o **Modo Express**.
+
+### Modo Arquivo
+
+Leia o arquivo informado em `${input:DesignDocPath}` na íntegra.
+
+O Design Document é composto por duas partes:
+- **Parte 1 — Narrativa**: contexto de produto, problema, usuários, escopo e critérios de sucesso de negócio
+- **Parte 2 — Appendix Técnico**: endpoints, schema, regras de negócio, restrições técnicas e critérios de aceitação
+
+Use **ambas as partes** para montar as specs. A Parte 1 fornece contexto e motivação; a Parte 2 fornece os contratos e requisitos testáveis.
+
+**Verificação de Gaps**: antes de prosseguir, verifique se a Parte 2 contém entradas marcadas com `⚠️ requer definição`.
+
+- Se houver gaps em campos críticos (critérios de aceitação, regras de negócio ou contratos de dados), informe o usuário, liste os gaps e pergunte se deseja preencher agora ou gerar as specs com as lacunas sinalizadas.
+- Se os gaps forem em seções opcionais (referências, questões em aberto), prossiga e sinalize nas specs geradas.
+
+### Modo Express
+
+Se nenhum caminho foi fornecido, inicie a coleta inline. Faça as perguntas abaixo em grupos naturais — não todas de uma vez.
+
+**Identificação:**
+- Qual o tipo de trabalho? (`feature`, `bug` ou `refactor`)
+- Descreva brevemente o que precisa ser feito.
+
+**Para Feature:**
+- Quais são os requisitos funcionais principais?
+- Existe alguma restrição técnica ou regra de negócio explícita?
+- Como validar que está correto? (critérios de aceitação no formato Dado/Quando/Então)
+
+**Para Bug:**
+- Qual o comportamento atual e o esperado?
+- Qual componente ou camada está envolvido?
+- O que a correção não pode quebrar?
+- Como provar que o bug foi corrigido?
+
+**Para Refactor:**
+- O que está problemático e qual o estado alvo?
+- Quais interfaces ou contratos não podem mudar?
+- Como provar que o comportamento externo não mudou?
+
+Após coletar as respostas, prossiga para o Planejamento (Etapa 2) usando as informações coletadas no lugar do Design Document.
+
+---
+
+## Etapa 2 — Análise e Planejamento
+
+Com as informações disponíveis (do arquivo ou da coleta inline), identifique:
+
 - O **tipo de trabalho**: `feature`, `bug` ou `refactor`
-- O **nome do trabalho**: slug em kebab-case que será usado como nome da pasta (ex.: `customer-eligibility`, `fix-payment-timeout`, `extract-auth-service`)
+- O **nome do trabalho**: slug em kebab-case para o nome da pasta (ex.: `customer-eligibility`, `fix-payment-timeout`, `extract-auth-service`)
 - As **responsabilidades distintas** que precisam de specs separadas
 
 > Uma spec por responsabilidade. Se duas responsabilidades compartilham o mesmo contrato de dados e critérios de aceitação, podem ser agrupadas. Se não, devem ser separadas.
 
-## Etapa 2 — Planejamento (obrigatório antes de criar arquivos)
+Verifique se a pasta `/specs/{tipo}/{nome}/` já existe:
 
-Antes de criar qualquer arquivo, apresente ao usuário o plano com:
+- Se **não existir**, prossiga normalmente.
+- Se **já existir**, informe o usuário e pergunte se deseja sobrescrever o conteúdo existente, usar um nome diferente ou cancelar. Aguarde a decisão antes de continuar.
 
-1. O tipo de trabalho identificado (`feature` / `bug` / `refactor`)
+Apresente ao usuário o plano com:
+
+1. O tipo de trabalho identificado
 2. O caminho base que será criado: `/specs/{tipo}/{nome}/`
-3. A lista de specs planejadas no formato:
+3. A lista de specs planejadas:
    - `spec-01-{titulo}.md` — [descrição de uma linha do escopo]
    - `spec-02-{titulo}.md` — [descrição de uma linha do escopo]
 4. A estrutura do `IMPLEMENTATION.md` que será gerado
 
 Aguarde a confirmação do usuário antes de prosseguir para a Etapa 3.
+
+---
 
 ## Etapa 3 — Geração dos Arquivos
 
@@ -54,28 +125,25 @@ Após a confirmação, crie todos os arquivos na seguinte estrutura:
 - **Tipo `feature`**: `/specs/features/{feature-name}/`
 - **Tipo `bug`**: `/specs/bugs/{bug-name}/`
 - **Tipo `refactor`**: `/specs/refactor/{refactor-name}/`
-- **Nome da pasta**: kebab-case, descritivo, sem versão (ex.: `customer-eligibility`, `fix-payment-timeout`)
-- **Specs**: `spec-NN-{titulo}.md` onde `NN` é o número sequencial com zero à esquerda (01, 02, 03...)
-- **Título**: kebab-case, descritivo do escopo da spec (ex.: `spec-01-eligibility-rules.md`)
+- **Nome da pasta**: kebab-case, descritivo, sem versão
+- **Specs**: `spec-NN-{titulo}.md` onde `NN` é sequencial com zero à esquerda (01, 02, 03...)
 
 ---
 
 ## IMPLEMENTATION.md — Índice e Registro de Implementação
 
-O `IMPLEMENTATION.md` é um documento vivo. Crie-o junto com as specs, preenchendo as seções de planejamento. As seções de registro serão preenchidas durante e após a implementação.
-
 ```md
 ---
 type: [feature | bug | refactor]
 name: [nome do trabalho]
-prd: [caminho do PRD de origem]
+design_doc: [caminho do Design Document de origem — omitir se modo express]
 date_created: [YYYY-MM-DD]
 status: [planned | in-progress | completed]
 ---
 
 # [Nome do Trabalho]
 
-[Resumo de uma a três frases do que este trabalho entrega ou corrige, extraído do PRD.]
+[Resumo de uma a três frases do que este trabalho entrega ou corrige.]
 
 ## Especificações
 
@@ -88,20 +156,18 @@ status: [planned | in-progress | completed]
 
 ## Ordem de Implementação Sugerida
 
-[Liste as specs na ordem recomendada de implementação, com justificativa quando a ordem não for óbvia.]
-
 1. `spec-01-{titulo}.md` — [motivo]
 2. `spec-02-{titulo}.md` — [depende de spec-01]
 
 ## Decisões e Desvios
 
-[Seção preenchida durante a implementação. Registre aqui decisões tomadas em runtime que divergiram do plano original das specs, com justificativa.]
+[Registre aqui decisões tomadas em runtime que divergiram do plano original, com justificativa.]
 
 - **[data]**: [decisão ou desvio] — [motivo]
 
 ## Resultado Final
 
-[Seção preenchida após a conclusão. Descreva o que foi entregue, o que ficou de fora do escopo e qualquer débito técnico gerado.]
+[Preenchido após a conclusão. O que foi entregue, o que ficou fora do escopo e débitos técnicos gerados.]
 ```
 
 ---
@@ -118,60 +184,51 @@ version: [ex.: 1.0]
 date_created: [YYYY-MM-DD]
 last_updated: [YYYY-MM-DD]
 owner: [Equipe/Indivíduo responsável]
-tags: [lista de tags relevantes, ex.: `schema`, `process`, `design`]
+tags: [lista de tags relevantes]
 ---
 
 # Introdução
 
-[Breve introdução à especificação e ao objetivo que ela pretende atingir, em relação ao PRD de origem.]
+[Breve introdução à especificação e ao objetivo que ela pretende atingir.]
 
 ## 1. Propósito & Escopo
 
-[Descrição clara do que esta spec cobre e do que está fora do escopo. Indique o público-alvo e as premissas assumidas.]
+[O que esta spec cobre e o que está fora do escopo. Público-alvo e premissas assumidas.]
 
 ## 2. Definições
 
-[Liste e defina siglas, abreviações e termos específicos do domínio usados nesta spec.]
+[Siglas, abreviações e termos específicos do domínio usados nesta spec.]
 
 ## 3. Requisitos, Restrições & Diretrizes
-
-[Liste explicitamente todos os requisitos, restrições, regras e diretrizes. Use marcadores ou tabelas para maior clareza.]
 
 - **REQ-001**: Requisito funcional
 - **SEC-001**: Requisito de segurança
 - **CON-001**: Restrição técnica ou de negócio
 - **GUD-001**: Diretriz recomendada
-- **PAT-001**: Padrão a seguir
 
 ## 4. Interfaces & Contratos de Dados
 
-[Descreva interfaces, APIs, contratos de dados e pontos de integração. Use tabelas ou blocos de código para esquemas e exemplos.]
+[Interfaces, APIs, contratos de dados e pontos de integração.]
 
 ## 5. Critérios de Aceitação
-
-[Critérios claros e testáveis usando o formato Dado-Quando-Então.]
 
 - **AC-001**: Dado [contexto], Quando [ação], Então [resultado esperado]
 - **AC-002**: O sistema deve [comportamento] quando [condição]
 
 ## 6. Estratégia de Automação de Testes
 
-[Defina a abordagem de testes adequada à stack do projeto — não copie exemplos de outras stacks.]
-
 - **Níveis de Teste**: Unitário, Integração, Ponta a Ponta
-- **Frameworks**: [frameworks compatíveis com a stack do projeto]
-- **Gestão de Dados de Teste**: [criação e limpeza de dados de teste]
-- **Integração CI/CD**: [pipeline de CI/CD do projeto]
-- **Requisitos de Cobertura**: [limites mínimos de cobertura]
-- **Testes de Performance**: [abordagem para carga e desempenho, se aplicável]
+- **Frameworks**: [conforme stack do projeto]
+- **Gestão de Dados de Teste**: [criação e limpeza]
+- **Integração CI/CD**: [pipeline do projeto]
+- **Requisitos de Cobertura**: [limites mínimos]
+- **Testes de Performance**: [se aplicável]
 
 ## 7. Justificativa & Contexto
 
-[Explique o raciocínio por trás dos requisitos e decisões de design. Referencie o PRD quando relevante.]
+[Raciocínio por trás dos requisitos e decisões. Referencie o Design Document quando relevante.]
 
 ## 8. Dependências & Integrações Externas
-
-[Foque no **o quê** é necessário, não no **como** será implementado. Evite versões de pacotes exceto quando forem restrições arquiteturais.]
 
 ### Sistemas Externos
 - **EXT-001**: [Nome do sistema] - [Propósito e tipo de integração]
@@ -193,10 +250,7 @@ tags: [lista de tags relevantes, ex.: `schema`, `process`, `design`]
 
 ## 9. Exemplos & Casos Extremos
 
-[Use a linguagem real do projeto. Demonstre ao menos um caso principal e um caso extremo ou de erro.]
-
 ```plaintext
-// Substitua pelo exemplo real na linguagem do projeto (ex.: typescript, python, json, yaml, sql).
 // Caso principal:
 //   <exemplo>
 //
@@ -206,14 +260,12 @@ tags: [lista de tags relevantes, ex.: `schema`, `process`, `design`]
 
 ## 10. Critérios de Validação
 
-[Critérios que devem ser satisfeitos para que esta spec seja considerada implementada corretamente.]
+[O que deve ser satisfeito para que esta spec seja considerada implementada corretamente.]
 
 ## 11. Especificações Relacionadas / Leitura Adicional
 
-[Specs internas pelo caminho relativo; documentação externa pela URL completa.]
-
-- [Título da Spec Relacionada](./spec-NN-{titulo}.md) — [descrição do relacionamento]
-- [Título da Documentação Externa](https://exemplo.com/docs) — [o que pode ser encontrado]
+- [Spec Relacionada](./spec-NN-{titulo}.md) — [descrição do relacionamento]
+- [Documentação Externa](https://exemplo.com/docs) — [o que pode ser encontrado]
 ```
 
 ---
@@ -233,34 +285,29 @@ tags: [lista de tags relevantes]
 
 # Introdução
 
-[Descrição objetiva do bug: o que está acontecendo de errado e qual o impacto para o usuário ou sistema.]
+[Descrição objetiva do bug: o que está acontecendo de errado e qual o impacto.]
 
 ## 1. Propósito & Escopo
 
-[O que esta spec cobre para corrigir o bug. Delimite o que está e o que não está no escopo desta correção.]
+[O que esta spec cobre para corrigir o bug e o que está fora do escopo desta correção.]
 
 ## 2. Definições
 
-[Liste e defina termos específicos do domínio usados nesta spec.]
+[Termos específicos do domínio usados nesta spec.]
 
 ## 3. Causa Raiz
 
-[Descreva a causa raiz identificada ou hipótese mais provável. Inclua referências a arquivos, funções ou fluxos envolvidos.]
-
 - **Componente afetado**: [nome do módulo, serviço ou camada]
-- **Causa identificada**: [descrição técnica da causa]
-- **Hipótese alternativa**: [se houver, liste outras causas possíveis]
+- **Causa identificada**: [descrição técnica]
+- **Hipótese alternativa**: [se houver]
 
 ## 4. Comportamento Atual vs. Esperado
 
 | Aspecto | Comportamento Atual | Comportamento Esperado |
 |---------|--------------------|-----------------------|
 | [ex.: resposta da API] | [o que acontece] | [o que deveria acontecer] |
-| [ex.: estado do banco] | [o que acontece] | [o que deveria acontecer] |
 
 ## 5. Passos de Reprodução
-
-[Liste os passos exatos para reproduzir o bug. Inclua pré-condições, dados de entrada e ambiente.]
 
 **Pré-condições**: [estado inicial necessário]
 
@@ -268,43 +315,35 @@ tags: [lista de tags relevantes]
 2. [Passo 2]
 3. [Resultado observado]
 
-**Ambiente**: [produção / staging / local — versão, configuração relevante]
+**Ambiente**: [produção / staging / local]
 
 ## 6. Requisitos da Correção
 
-[Liste o que a correção deve satisfazer, incluindo restrições para não introduzir regressões.]
-
 - **REQ-001**: A correção deve [comportamento esperado]
 - **CON-001**: A correção não deve alterar [contrato / interface existente]
-- **SEC-001**: [Requisito de segurança se o bug tiver implicação de segurança]
 
 ## 7. Interfaces & Contratos de Dados Afetados
 
-[Descreva os contratos de dados, APIs ou interfaces impactados pela correção.]
+[Contratos de dados, APIs ou interfaces impactados pela correção.]
 
 ## 8. Critérios de Aceitação
 
-[Critérios que provam que o bug foi corrigido e nenhuma regressão foi introduzida.]
-
-- **AC-001**: Dado [contexto de reprodução], Quando [ação], Então [comportamento esperado, não o bugado]
-- **AC-002**: Os cenários existentes de [funcionalidade relacionada] continuam funcionando corretamente
+- **AC-001**: Dado [contexto de reprodução], Quando [ação], Então [comportamento correto]
+- **AC-002**: Os cenários existentes de [funcionalidade relacionada] continuam funcionando
 
 ## 9. Estratégia de Testes
 
 - **Teste de regressão**: [como garantir que o bug não volta]
-- **Frameworks**: [frameworks compatíveis com a stack do projeto]
-- **Cenários a cobrir**: [lista de cenários críticos a testar]
+- **Frameworks**: [conforme stack do projeto]
+- **Cenários a cobrir**: [lista de cenários críticos]
 
 ## 10. Dependências & Contexto Técnico
-
-[Componentes, serviços ou configurações que precisam ser considerados na correção.]
 
 - **DEP-001**: [Dependência ou componente relacionado] - [como impacta a correção]
 
 ## 11. Exemplos & Dados de Teste
 
 ```plaintext
-// Dados ou payloads que reproduzem o bug.
 // Entrada que causa o bug:
 //   <exemplo>
 //
@@ -314,7 +353,7 @@ tags: [lista de tags relevantes]
 
 ## 12. Especificações Relacionadas / Leitura Adicional
 
-- [Spec Relacionada](./spec-NN-{titulo}.md) — [descrição do relacionamento]
+- [Spec Relacionada](./spec-NN-{titulo}.md) — [descrição]
 - [Documentação Externa](https://exemplo.com/docs) — [contexto relevante]
 ```
 
@@ -334,26 +373,22 @@ tags: [lista de tags relevantes]
 
 # Introdução
 
-[Descrição objetiva do que será refatorado e qual o ganho esperado: legibilidade, performance, manutenibilidade, separação de responsabilidades, etc.]
+[Descrição objetiva do que será refatorado e qual o ganho esperado.]
 
 ## 1. Propósito & Escopo
 
-[O que será refatorado e o que não será tocado neste trabalho. Seja explícito sobre os limites para evitar scope creep.]
-
 **Em escopo**: [lista do que será refatorado]
-**Fora de escopo**: [lista do que não será alterado neste refactor]
+**Fora de escopo**: [lista do que não será alterado]
 
 ## 2. Definições
 
-[Liste e defina termos específicos usados nesta spec.]
+[Termos específicos usados nesta spec.]
 
 ## 3. Motivação Técnica
 
-[Explique por que o refactor é necessário agora. Inclua evidências objetivas sempre que possível.]
-
-- **Problema atual**: [descrição do problema técnico — ex.: acoplamento, duplicação, complexidade ciclomática]
-- **Impacto do problema**: [ex.: dificuldade de testar, risco de bugs, lentidão de desenvolvimento]
-- **Métricas atuais** *(se disponíveis)*: [ex.: cobertura de testes, tempo de build, número de dependências]
+- **Problema atual**: [ex.: acoplamento, duplicação, complexidade ciclomática]
+- **Impacto do problema**: [ex.: dificuldade de testar, risco de bugs]
+- **Métricas atuais** *(se disponíveis)*: [cobertura, tempo de build, dependências]
 
 ## 4. Estado Atual vs. Estado Alvo
 
@@ -361,49 +396,38 @@ tags: [lista de tags relevantes]
 |---------|-------------|-------------|
 | [ex.: estrutura de módulos] | [como está] | [como ficará] |
 | [ex.: cobertura de testes] | [% atual] | [% alvo] |
-| [ex.: número de responsabilidades] | [quantidade] | [quantidade] |
 
 ## 5. Requisitos & Restrições
 
-[O que o refactor deve garantir. Especialmente importante: o que NÃO pode mudar.]
-
-- **REQ-001**: O comportamento externo observável deve permanecer idêntico após o refactor
-- **REQ-002**: [Requisito técnico específico do refactor]
+- **REQ-001**: O comportamento externo observável deve permanecer idêntico
 - **CON-001**: A interface pública de [componente] não deve ser alterada
-- **CON-002**: [Restrição de compatibilidade, se houver]
 
 ## 6. Interfaces & Contratos Preservados
 
-[Liste explicitamente os contratos, APIs e interfaces que devem ser preservados sem alteração.]
+[Contratos, APIs e interfaces que devem ser preservados sem alteração.]
 
 ## 7. Estratégia de Refactor
 
-[Descreva a abordagem técnica. Inclua a ordem de execução quando há dependências entre etapas.]
+1. [Primeiro passo]
+2. [Segundo passo]
+3. [Terceiro passo]
 
-1. [Primeiro passo — ex.: extrair interface]
-2. [Segundo passo — ex.: mover implementação]
-3. [Terceiro passo — ex.: atualizar dependentes]
-
-**Riscos identificados**: [ex.: pontos de acoplamento que podem quebrar, dados em produção afetados]
+**Riscos identificados**: [pontos de acoplamento, dados em produção afetados]
 
 ## 8. Estratégia de Testes
 
-[Como garantir que o refactor não quebrou nada.]
-
-- **Abordagem**: [ex.: garantir cobertura antes de refatorar, rodar suite existente a cada etapa]
-- **Frameworks**: [frameworks compatíveis com a stack do projeto]
+- **Abordagem**: [ex.: garantir cobertura antes de refatorar]
+- **Frameworks**: [conforme stack do projeto]
 - **Testes de regressão**: [o que deve ser validado ao final]
-- **Métricas de melhoria**: [como medir que o refactor atingiu seu objetivo]
+- **Métricas de melhoria**: [como medir que o objetivo foi atingido]
 
 ## 9. Critérios de Aceitação
 
 - **AC-001**: Todos os testes existentes passam sem modificação de comportamento
-- **AC-002**: [Critério técnico de melhoria — ex.: cobertura acima de X%, complexidade reduzida]
-- **AC-003**: A interface pública de [componente] permanece compatível com os consumidores existentes
+- **AC-002**: [Critério técnico de melhoria]
+- **AC-003**: A interface pública de [componente] permanece compatível com consumidores existentes
 
 ## 10. Dependências & Componentes Afetados
-
-[Liste todos os componentes, serviços ou times que serão impactados pelo refactor.]
 
 - **DEP-001**: [Componente afetado] - [natureza do impacto e ação necessária]
 
@@ -419,7 +443,7 @@ tags: [lista de tags relevantes]
 
 ## 12. Especificações Relacionadas / Leitura Adicional
 
-- [Spec Relacionada](./spec-NN-{titulo}.md) — [descrição do relacionamento]
+- [Spec Relacionada](./spec-NN-{titulo}.md) — [descrição]
 - [Documentação Externa](https://exemplo.com/docs) — [contexto relevante]
 ```
 
@@ -431,5 +455,7 @@ tags: [lista de tags relevantes]
 - Distinga claramente entre requisitos, restrições e recomendações.
 - Defina todas as siglas e termos específicos do domínio.
 - Garanta que cada spec seja autossuficiente — não exija que o leitor consulte outras specs para entender o escopo.
-- Cada spec deve cobrir uma única responsabilidade. Se o escopo exigir mais de três grupos de requisitos não relacionados, divida em specs separadas e vincule-as na seção de specs relacionadas.
+- Cada spec deve cobrir uma única responsabilidade. Se o escopo exigir mais de três grupos de requisitos não relacionados, divida em specs separadas.
 - Ao referenciar specs internas, use sempre o caminho relativo (`./spec-NN-{titulo}.md`).
+- Se o Design Document de origem contiver `⚠️ requer definição`, sinalize a lacuna na spec — nunca preencha com suposições.
+- No modo express, se as respostas coletadas forem insuficientes para gerar critérios de aceitação testáveis, pergunte antes de gerar — specs sem AC são inutilizáveis para implementação.
