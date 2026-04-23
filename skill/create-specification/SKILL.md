@@ -1,56 +1,60 @@
 ---
 name: create-specification
-description: 'Gera especificações prontas para IA a partir de um ticket do Jira (via MCP), de um Design Document ou de uma descrição inline (modo express). Aceita link/ID do Jira, caminho de arquivo ou descrição direta na conversa. Compatível com os tipos feature, bug e refactor.'
+description: 'Gera o TASK.md e as specs necessárias para implementação assistida por IA a partir de um ticket do Jira (via MCP) ou de uma descrição inline. Busca automaticamente páginas do Confluence linkadas no ticket. Compatível com os tipos feature, bug e refactor.'
 ---
 
 # Criar Especificações
 
-Seu objetivo é gerar todas as especificações necessárias para que a IA possa implementar o trabalho com máximo controle de contexto e rastreabilidade.
+Seu objetivo é gerar o `TASK.md` e todas as specs necessárias para que a IA implemente o trabalho com controle de contexto, rastreabilidade e sem retrabalho.
 
-Esta skill opera em três modos:
+O `TASK.md` é o artefato central. Ele deve ser legível por qualquer pessoa do time — dev, QA, PO — sem exigir conhecimento técnico de implementação. É o histórico do que foi feito, o contexto para sessões futuras da IA, e a fonte para atualizações no Jira e documentações no Confluence.
 
-- **Modo Jira**: recebe um link ou ID de ticket do Jira, busca os dados via MCP e gera as specs a partir deles.
-- **Modo arquivo**: recebe o caminho de um Design Document existente e gera as specs a partir dele.
-- **Modo express**: quando nenhuma das entradas acima é fornecida, coleta as informações mínimas diretamente na conversa.
+Esta skill opera em dois modos:
+- **Modo Jira**: recebe um link ou ID de ticket, busca dados do Jira e páginas do Confluence linkadas via MCP.
+- **Modo Express**: coleta informações mínimas diretamente na conversa.
 
 ---
 
 ## Contexto do Projeto
 
-Antes de qualquer outra ação, tente ler o arquivo `ENGINEERING_STANDARDS.md` na raiz do projeto.
+Antes de qualquer outra ação, leia dois arquivos na raiz do projeto:
 
-- Se existir, extraia a stack tecnológica (linguagem, frameworks, banco de dados, mensageria) e os padrões arquiteturais relevantes.
-- Use essas informações para preencher as seções de estratégia de testes e dependências nas specs geradas.
-- Se não existir, prossiga normalmente — deixe as seções dependentes de stack com `[definir conforme stack do projeto]`.
+**1. `ENGINEERING_STANDARDS.md`** — se existir, use-o como referência durante toda a geração das specs. Não resuma seu conteúdo aqui — consulte-o diretamente sempre que precisar saber os padrões, convenções e decisões arquiteturais do time.
+
+**2. `TASK.md` na raiz** — se existir, leia para entender o contexto de trabalho em andamento antes de criar novos arquivos.
+
+Se nenhum dos arquivos existir, prossiga normalmente.
 
 ---
 
 ## Etapa 1 — Identificação do Modo
 
-Analise o argumento recebido e o contexto da conversa:
+Analise o argumento recebido:
 
-- Se contiver uma **URL do Jira** (ex.: `https://empresa.atlassian.net/browse/PROJ-123`) ou um **ID de ticket** no formato `PROJ-123`, ative o **Modo Jira**.
-- Se contiver um **caminho de arquivo** válido (ex.: `docs/design-docs/features/minha-feature.md`), ative o **Modo Arquivo**.
-- Se estiver vazio, em branco, ou o usuário informar que não tem ticket nem arquivo (ex.: "não tenho", "express", "-"), ative o **Modo Express**.
+- **URL ou ID do Jira** (ex.: `https://empresa.atlassian.net/browse/PROJ-123` ou `PROJ-123`) → **Modo Jira**
+- **Vazio ou descrição inline** → **Modo Express**
+
+---
 
 ### Modo Jira
 
-Extraia o ID do ticket do argumento recebido — o argumento pode vir em qualquer um destes formatos:
+**Passo 1 — Buscar dados do ticket:**
 
-- **URL completa:** `https://empresa.atlassian.net/browse/PROJ-123` → extrair o ID `PROJ-123`
-- **ID direto:** `PROJ-123` → usar diretamente
-- **Linguagem natural com link:** `"crie specs para essa tarefa https://..."` → extrair o ID da URL
+Use o MCP do Jira para buscar:
+- Summary (título)
+- Descrição completa
+- Tipo (Story, Task, Bug, Sub-task)
+- Critérios de Aceitação
+- Componentes / Labels
+- Links (PRs, páginas do Confluence, tickets relacionados)
 
-Use o MCP do Confluence/Jira para buscar os dados do ticket:
+**Passo 2 — Buscar páginas do Confluence linkadas:**
 
-- **Summary** (título da história ou tarefa)
-- **Descrição** (contexto, motivação, detalhes do refinamento)
-- **Tipo** (Story, Task, Bug, Sub-task)
-- **Critérios de Aceitação** (campo dedicado ou itens listados na descrição)
-- **Componentes / Labels** (se disponíveis)
-- **Links** (PRs, páginas do Confluence, dependências)
+Identifique todos os links do Confluence nos campos do ticket. Para cada link encontrado, use o MCP do Confluence para buscar o conteúdo completo da página. Essas páginas geralmente contêm o refinamento técnico, regras de negócio e contexto que não estão no ticket.
 
-**Mapeamento de tipo para spec:**
+Se não houver links do Confluence, prossiga apenas com os dados do Jira.
+
+**Passo 3 — Mapeamento de tipo:**
 
 | Tipo no Jira | Tipo de spec |
 |---|---|
@@ -58,164 +62,147 @@ Use o MCP do Confluence/Jira para buscar os dados do ticket:
 | Bug | `bug` |
 | Refactor (label ou convenção) | `refactor` |
 
-Se o tipo não for mapeável claramente, pergunte ao usuário antes de continuar.
+Se o tipo não for mapeável, pergunte antes de continuar.
 
-**Entendimento do Problema**: antes de prosseguir para a Etapa 2, avalie se você tem informações suficientes para gerar especificações sem ambiguidade. O objetivo é evitar retrabalho — specs geradas com base em informações incompletas ou mal escritas resultam em implementações erradas.
+**Passo 4 — Avaliação de completude:**
 
-Faça essa avaliação em três dimensões:
+Com todos os dados coletados (Jira + Confluence), avalie em três dimensões:
 
 **1. Clareza do problema**
-- Você consegue descrever com precisão o que deve ser construído ou corrigido?
-- A descrição do ticket é suficientemente clara, ou está vaga, contraditória ou incompleta?
+Você consegue descrever com precisão o que deve ser construído ou corrigido? A descrição está clara ou está vaga, contraditória ou incompleta?
 
 **2. Critérios de aceitação**
-- Existem critérios de aceitação explícitos ou é possível derivá-los claramente da descrição?
-- Os critérios são testáveis (formato Dado/Quando/Então ou equivalente)?
+Existem critérios explícitos ou deriváveis da descrição? São testáveis no formato Dado/Quando/Então?
 
-**3. Restrições e contexto técnico**
-- Há informações sobre integrações, contratos de dados ou restrições que impactam a implementação?
-- Existem dependências com outros sistemas ou tickets que precisam ser consideradas?
+**3. Regras de negócio e restrições**
+Há regras de negócio, restrições técnicas ou dependências que impactam a implementação e estão documentadas?
 
-**Se qualquer dimensão estiver insuficiente**, não prossiga para a Etapa 2. Em vez disso, faça as perguntas necessárias ao usuário em um único bloco — agrupe todas as dúvidas, não faça uma pergunta por vez. Seja direto sobre o que está faltando:
+**Se qualquer dimensão estiver insuficiente**, não prossiga. Agrupe todas as dúvidas em um único bloco:
 
-> "O ticket [ID] tem algumas lacunas que podem gerar retrabalho nas specs. Preciso entender:
-> - [pergunta sobre clareza do problema]
-> - [pergunta sobre critério de aceitação ausente]
-> - [pergunta sobre restrição técnica]"
+> "O ticket [ID] tem lacunas que podem gerar retrabalho. Preciso entender:
+> - [pergunta 1]
+> - [pergunta 2]"
 
-Só avance para a Etapa 2 quando tiver clareza suficiente para gerar especificações sem lacunas críticas.
+Só avance quando tiver clareza suficiente.
 
-### Modo Arquivo
-
-Leia o arquivo informado em `${input:DesignDocPath}` na íntegra.
-
-O Design Document é composto por duas partes:
-- **Parte 1 — Narrativa**: contexto de produto, problema, usuários, escopo e critérios de sucesso de negócio
-- **Parte 2 — Appendix Técnico**: endpoints, schema, regras de negócio, restrições técnicas e critérios de aceitação
-
-Use **ambas as partes** para montar as specs. A Parte 1 fornece contexto e motivação; a Parte 2 fornece os contratos e requisitos testáveis.
-
-**Verificação de Gaps**: antes de prosseguir, verifique se a Parte 2 contém entradas marcadas com `⚠️ requer definição`.
-
-- Se houver gaps em campos críticos (critérios de aceitação, regras de negócio ou contratos de dados), informe o usuário, liste os gaps e pergunte se deseja preencher agora ou gerar as specs com as lacunas sinalizadas.
-- Se os gaps forem em seções opcionais (referências, questões em aberto), prossiga e sinalize nas specs geradas.
+---
 
 ### Modo Express
 
-Se nenhum caminho foi fornecido, inicie a coleta inline. Faça em **duas rodadas**: **Rodada 1** — pergunte tipo e descrição. **Rodada 2** — após receber as respostas, faça as questões específicas do tipo identificado.
-
-**Rodada 1 — Identificação:**
+**Rodada 1:**
 - Qual o tipo de trabalho? (`feature`, `bug` ou `refactor`)
 - Descreva brevemente o que precisa ser feito.
 
-**Rodada 2 — Questões específicas** (faça apenas após receber as respostas da Rodada 1):
+**Rodada 2** (após receber as respostas):
 
-*Para Feature:*
+*Feature:*
 - Quais são os requisitos funcionais principais?
-- Existe alguma restrição técnica ou regra de negócio explícita?
+- Existem regras de negócio explícitas?
+- Existem restrições técnicas?
 - Como validar que está correto? (critérios de aceitação no formato Dado/Quando/Então)
 
-*Para Bug:*
+*Bug:*
 - Qual o comportamento atual e o esperado?
 - Qual componente ou camada está envolvido?
 - O que a correção não pode quebrar?
 - Como provar que o bug foi corrigido?
 
-*Para Refactor:*
+*Refactor:*
 - O que está problemático e qual o estado alvo?
 - Quais interfaces ou contratos não podem mudar?
 - Como provar que o comportamento externo não mudou?
 
-Após coletar as respostas, prossiga para o Planejamento (Etapa 2) usando as informações coletadas no lugar do Design Document.
-
 ---
 
-## Etapa 2 — Análise e Planejamento
+## Etapa 2 — Análise, Tamanho e Planejamento
 
-Com as informações disponíveis (do Jira, do arquivo ou da coleta inline), identifique:
+### Classificação de tamanho
 
-- O **tipo de trabalho**: `feature`, `bug` ou `refactor`
-- O **nome do trabalho**: slug em kebab-case para o nome da pasta (ex.: `customer-eligibility`, `fix-payment-timeout`, `extract-auth-service`)
-- As **responsabilidades distintas** que precisam de specs separadas
+| Tamanho | Critério |
+|---------|----------|
+| **Small** | 1 responsabilidade, sem integração nova, sem impacto em contrato público |
+| **Medium** | 2–3 responsabilidades, ou integração existente, ou impacto em produção |
+| **Large** | 4+ responsabilidades, ou nova integração, ou mudança de contrato público |
 
-> Uma spec por responsabilidade. Se duas responsabilidades compartilham o mesmo contrato de dados e critérios de aceitação, podem ser agrupadas. Se não, devem ser separadas.
+### Seções condicionais nas specs
 
-Verifique se a pasta `/specs/{tipo}/{nome}/` já existe:
+Verifique se o trabalho se enquadra em algum dos casos abaixo e ative as seções correspondentes nas specs:
 
-- Se **não existir**, prossiga normalmente.
-- Se **já existir**, informe o usuário e pergunte se deseja sobrescrever o conteúdo existente, usar um nome diferente ou cancelar. Aguarde a decisão antes de continuar.
+| Condição | Seção adicional obrigatória na spec |
+|----------|-------------------------------------|
+| Impacta endpoint público ou contrato Kafka | Rollback Plan |
+| Novo consumer ou producer Kafka | Propagação MDC / headers |
+| Envolve dados sensíveis (PII, financeiro) | Mascaramento e segurança |
+| Mudança em query crítica ou schema | Impacto em dados existentes |
 
-Antes de apresentar o plano, ordene as specs pela sequência em que devem ser implementadas:
+### Ordem de specs
 
-- Specs sem dependências externas devem vir primeiro.
-- Specs que dependem de contratos ou componentes gerados por outra spec devem vir depois.
-- A numeração (`spec-01`, `spec-02`...) é a ordem de implementação — não é arbitrária.
+Ao dividir responsabilidades, use a sequência natural do stack do time como referência — consulte o `ENGINEERING_STANDARDS.md` para a ordem correta. Specs sem dependências externas vêm primeiro. A numeração reflete a ordem obrigatória de implementação.
 
-Apresente ao usuário o plano com:
+### Apresentação do plano
 
-1. O tipo de trabalho identificado
-2. O caminho base que será criado: `/specs/{tipo}/{nome}/`
-3. A lista de specs planejadas **na ordem de implementação**:
-   - `spec-01-{titulo}.md` — [descrição de uma linha do escopo]
-   - `spec-02-{titulo}.md` — [depende de spec-01; descrição de uma linha do escopo]
-4. A estrutura do `IMPLEMENTATION.md` que será gerado
-5. **Se Modo Jira:** informe que as seguintes sub-tarefas serão criadas no ticket `[ID]`:
-   - `[título da spec-01]`
-   - `[título da spec-02]`
+Apresente ao usuário:
 
-Aguarde a confirmação do usuário antes de prosseguir para a Etapa 3.
+1. Tipo de trabalho identificado
+2. Tamanho classificado (Small / Medium / Large) e justificativa
+3. Caminho base: `/specs/{tipo}/{nome}/`
+4. Lista de specs na ordem de implementação:
+   - `spec-01-{titulo}.md` — [escopo de uma linha]
+   - `spec-02-{titulo}.md` — [depende de spec-01; escopo de uma linha]
+5. Seções condicionais ativadas e motivo
+6. **Se Modo Jira:** sub-tarefas que serão criadas no ticket `[ID]`
+
+Verifique se `/specs/{tipo}/{nome}/` já existe. Se sim, pergunte se deseja sobrescrever, usar nome diferente ou cancelar. Aguarde antes de continuar.
+
+**Aguarde confirmação do usuário antes de prosseguir para a Etapa 3.**
 
 ---
 
 ## Etapa 3 — Geração dos Arquivos
 
-Após a confirmação, siga esta ordem:
+Após confirmação, siga esta ordem:
 
-**Se Modo Jira:** antes de criar qualquer arquivo, use o MCP para criar as sub-tarefas no ticket pai — uma por spec planejada:
+**Se Modo Jira:** crie as sub-tarefas no ticket pai antes de criar qualquer arquivo:
+- Título: `[spec-NN] Título da especificação`
+- Tipo: Sub-task
+- Status: To Do
+- Descrição: escopo de uma linha da spec
 
-- **Título:** o mesmo título da spec (ex.: `[spec-01] Título da especificação`)
-- **Tipo:** Sub-task
-- **Status inicial:** To Do
-- **Descrição:** o escopo de uma linha da spec conforme definido no plano
+Guarde os IDs retornados — eles serão usados no `TASK.md`.
 
-Guarde os IDs retornados (ex.: `PROJ-124`, `PROJ-125`) — eles serão usados ao escrever o `IMPLEMENTATION.md`.
-
-Em seguida, crie todos os arquivos na seguinte estrutura:
+Crie os arquivos na seguinte estrutura:
 
 ```
 /specs/
   features/{feature-name}/
-    IMPLEMENTATION.md
+    TASK.md
     spec-01-{titulo}.md
     spec-02-{titulo}.md
   bugs/{bug-name}/
-    IMPLEMENTATION.md
+    TASK.md
     spec-01-{titulo}.md
   refactor/{refactor-name}/
-    IMPLEMENTATION.md
+    TASK.md
     spec-01-{titulo}.md
 ```
 
-### Convenção de nomenclatura
-
-- **Tipo `feature`**: `/specs/features/{feature-name}/`
-- **Tipo `bug`**: `/specs/bugs/{bug-name}/`
-- **Tipo `refactor`**: `/specs/refactor/{refactor-name}/`
-- **Nome da pasta**: kebab-case, descritivo, sem versão
-- **Specs**: `spec-NN-{titulo}.md` onde `NN` é sequencial com zero à esquerda (01, 02, 03...)
-
-Após criar todos os arquivos, informe ao usuário: a lista de caminhos gerados, os IDs das sub-tarefas criadas no Jira (se Modo Jira) e qualquer campo que ficou com gap pendente (marcado com `⚠️ requer definição`).
+Após criar todos os arquivos, informe ao usuário: lista de caminhos gerados, IDs das sub-tarefas criadas no Jira (se Modo Jira) e campos com gap pendente marcados com `⚠️ requer definição`.
 
 ---
 
-## IMPLEMENTATION.md — Índice e Registro de Implementação
+## TASK.md — Documento Central
+
+O `TASK.md` é o primeiro arquivo que qualquer agente ou desenvolvedor deve ler. É legível por qualquer pessoa do time. Não contém código nem detalhes de implementação — esses ficam nas specs. É o registro funcional completo do trabalho: o que foi pedido, o que foi feito, as decisões tomadas.
+
+Durante a implementação, **apenas o `TASK.md` é atualizado** — nenhuma chamada ao Jira ou Confluence é feita. Ao final, uma skill dedicada lê este arquivo e executa todas as atualizações externas usando os links aqui registrados.
 
 ```md
 ---
 type: [feature | bug | refactor]
-name: [nome do trabalho]
-jira_ticket: [ID do ticket pai — ex.: PROJ-123 — omitir se não vier do Jira]
-design_doc: [caminho do Design Document de origem — omitir se modo express ou Jira]
+size: [small | medium | large]
+name: [nome do trabalho em kebab-case]
+jira_ticket: [ID do ticket pai — omitir se Modo Express]
+jira_ticket_url: [URL completa do ticket pai — omitir se Modo Express]
 date_created: [YYYY-MM-DD]
 last_updated: [YYYY-MM-DD]
 status: [planned | in-progress | completed]
@@ -223,185 +210,199 @@ status: [planned | in-progress | completed]
 
 # [Nome do Trabalho]
 
-[Resumo de uma a três frases do que este trabalho entrega ou corrige.]
+[Resumo de duas a quatro frases em linguagem clara: o que este trabalho entrega ou corrige, qual problema resolve e qual o valor para o negócio ou sistema.]
 
-## Especificações
+## Contexto
 
-<!-- Se jira_ticket estiver preenchido, use a tabela com coluna Jira: -->
-| # | Arquivo | Escopo | Status | Jira |
-|---|---------|--------|--------|------|
-| 01 | [spec-01-{titulo}.md](./spec-01-{titulo}.md) | [escopo de uma linha] | pending | [ID da sub-tarefa] |
-| 02 | [spec-02-{titulo}.md](./spec-02-{titulo}.md) | [escopo de uma linha] | pending | [ID da sub-tarefa] |
+[Contexto necessário para entender o trabalho: de onde veio o requisito, qual o cenário atual, por que isso precisa ser feito. Sem jargões técnicos desnecessários.]
 
-<!-- Se jira_ticket NÃO estiver preenchido, omita a coluna Jira: -->
-<!-- | # | Arquivo | Escopo | Status | -->
-<!-- |---|---------|--------|--------| -->
-<!-- | 01 | [spec-01-{titulo}.md](./spec-01-{titulo}.md) | [escopo de uma linha] | pending | -->
-<!-- | 02 | [spec-02-{titulo}.md](./spec-02-{titulo}.md) | [escopo de uma linha] | pending | -->
+## Escopo
 
-> **Protocolo de atualização:** atualize este arquivo **imediatamente** após cada ação — não agrupe atualizações no final.
-> - Ao **iniciar** uma spec: altere seu status para `in-progress`, o status do `IMPLEMENTATION.md` para `in-progress` e atualize `last_updated`. Se houver `jira_ticket`, atualize a sub-tarefa correspondente para **In Progress** via MCP.
-> - Ao **concluir** uma spec: altere seu status para `done`, escreva o resumo na seção **Resumos de Implementação** e atualize `last_updated`. Se houver `jira_ticket`, atualize a sub-tarefa para **Done** e adicione um comentário com o resumo da implementação via MCP. Só então avance para a próxima.
-> - Não inicie a spec seguinte sem que o resumo da atual esteja registrado.
+**O que será feito:**
+- [item 1]
+- [item 2]
 
-## Sequência de Implementação
+**O que não será feito:**
+- [item — e por quê, se relevante]
 
-> Esta ordem é **obrigatória**. Não inicie uma spec sem que a anterior esteja concluída.
+## Requisitos Funcionais
 
-1. `spec-01-{titulo}.md` — [motivo]
-2. `spec-02-{titulo}.md` — [depende de spec-01]
+- **RF-001**: [o sistema deve...]
+- **RF-002**: [o sistema deve...]
+
+## Regras de Negócio
+
+- **RN-001**: [regra de negócio explícita]
+- **RN-002**: [regra de negócio explícita]
+
+> Se não houver regras de negócio identificadas, remova esta seção.
+
+## Critérios de Aceitação
+
+- **AC-001**: Dado [contexto], Quando [ação], Então [resultado esperado]
+- **AC-002**: Dado [contexto], Quando [ação], Então [resultado esperado]
+
+## Especificações Técnicas
+
+> Esta tabela controla o progresso da implementação. Atualize **imediatamente** ao iniciar e ao concluir cada spec. Nenhuma chamada externa é feita durante a implementação — o Jira será atualizado ao final pela skill de update.
+
+| # | Arquivo | Escopo | Status | Jira ID | Jira URL |
+|---|---------|--------|--------|---------|----------|
+| 01 | [spec-01-{titulo}.md](./spec-01-{titulo}.md) | [escopo de uma linha] | pending | [ID sub-tarefa — omitir colunas Jira se Modo Express] | [URL completa] |
+| 02 | [spec-02-{titulo}.md](./spec-02-{titulo}.md) | [escopo de uma linha] | pending | [ID sub-tarefa] | [URL completa] |
+
+## Protocolo de Execução
+
+> **Leia antes de escrever qualquer código.**
+
+**Ciclo por spec:**
+
+1. Leia a spec completamente.
+2. Atualize o status da spec neste arquivo para `in-progress` e atualize `last_updated`.
+3. Implemente o que a spec descreve — nada além do que a spec descreve.
+4. Valide todos os Critérios de Aceitação da spec.
+5. Escreva o resumo na seção **Resumos de Implementação** deste arquivo, em linguagem clara, sem código.
+6. Atualize o status da spec para `done` e atualize `last_updated`.
+7. Somente então avance para a próxima spec.
+
+> Nenhuma chamada ao Jira ou Confluence é feita durante a implementação. O `TASK.md` é a única fonte de verdade durante o desenvolvimento. As atualizações externas acontecem ao final, via skill dedicada.
+
+**Regra de decisão em runtime:**
+
+Se durante a implementação surgir uma situação não coberta pela spec — ambiguidade, decisão técnica não documentada, comportamento inesperado de dependência — **PARE imediatamente**. Não tome a decisão sozinho. Registre o que encontrou em **Decisões e Desvios** e aguarde instrução explícita antes de continuar.
+
+Situações que exigem parada obrigatória:
+- A spec descreve um comportamento que conflita com o código existente
+- A spec não cobre um caso de erro identificado durante a implementação
+- Implementar a spec exige alterar algo fora do escopo declarado
+- Há dúvida sobre qual padrão do `ENGINEERING_STANDARDS.md` se aplica
+
+**Conclusão da implementação:**
+
+Quando todas as specs estiverem `done`:
+1. Atualize o status deste arquivo para `completed` e preencha **Resultado Final**.
+2. Informe ao usuário que a implementação foi concluída e que o `TASK.md` está pronto para ser processado pela skill de update do Jira e Confluence.
 
 ## Resumos de Implementação
 
-> Preenchido incrementalmente — escreva o resumo de cada spec **imediatamente** após concluí-la.
-> O objetivo é permitir entender o que foi construído sem precisar ler as specs. Se precisar de mais detalhes, consulte a spec correspondente.
+> Preenchido incrementalmente. Escreva o resumo de cada spec **imediatamente** após concluí-la, antes de avançar para a próxima. Em linguagem clara — sem código, sem jargões desnecessários.
 
 ### spec-01-{titulo}.md
 
 `status: pending`
 
-<!-- Ao concluir: descreva os componentes criados ou alterados, o comportamento entregue e decisões técnicas relevantes. -->
+<!-- Ao concluir: descreva o que foi implementado, o comportamento entregue e qualquer decisão relevante tomada. -->
 
 ### spec-02-{titulo}.md
 
 `status: pending`
 
-<!-- Ao concluir: descreva os componentes criados ou alterados, o comportamento entregue e decisões técnicas relevantes. -->
+<!-- Ao concluir: descreva o que foi implementado, o comportamento entregue e qualquer decisão relevante tomada. -->
 
 ## Decisões e Desvios
 
-[Registre aqui decisões tomadas em runtime que divergiram do plano original, com justificativa.]
+> Registre aqui toda decisão tomada em runtime que não estava prevista na spec original, com data e justificativa. Se a decisão ainda não foi tomada, registre como pendente e aguarde instrução.
 
-- **[data]**: [decisão ou desvio] — [motivo]
+- **[YYYY-MM-DD]**: [decisão ou desvio] — [motivo]
 
 ## Resultado Final
 
-> Preenchido após todas as specs estarem com status `done`.
+> Preenchido após todas as specs estarem `done`. Fonte para a skill de update — usada para atualizar o Jira e criar documentação no Confluence.
 
-**O que foi entregue**: [síntese do conjunto — não repita os resumos individuais, foque no valor entregue como um todo]
+**O que foi entregue**: [síntese funcional do que foi construído ou corrigido]
 **Fora do escopo**: [o que ficou de fora e por quê]
-**Débitos técnicos**: [limitações conhecidas, melhorias postergadas ou riscos identificados]
-
-## Protocolo de Execução
-
-> **Regras obrigatórias — leia antes de escrever qualquer código.**
->
-> - Implemente **uma spec por vez**, na ordem numerada. Nunca inicie a spec `N+1` sem que a spec `N` esteja com status `done`.
-> - Se durante a implementação surgir uma decisão que diverge do planejado, registre **imediatamente** em **Decisões e Desvios** antes de continuar.
->
-> **Ciclo por spec:**
-> 1. Leia a spec completamente.
-> 2. Atualize o status para `in-progress` e `last_updated` neste arquivo.
-> 3. Se `jira_ticket` estiver preenchido: atualize a sub-tarefa correspondente para **In Progress** via MCP.
-> 4. Implemente o que a spec descreve.
-> 5. Valide todos os Critérios de Aceitação da spec.
-> 6. Escreva o resumo em **Resumos de Implementação**: componentes criados/alterados, comportamento entregue, decisões técnicas relevantes.
-> 7. Atualize o status para `done` e `last_updated`.
-> 8. Se `jira_ticket` estiver preenchido: atualize a sub-tarefa para **Done** e adicione um comentário via MCP com o mesmo conteúdo do resumo escrito no passo 6.
-> 9. Somente então avance para a próxima spec.
->
-> **Conclusão:** quando todas as specs estiverem `done`, atualize o status deste arquivo para `completed` e preencha **Resultado Final**.
+**Débitos técnicos**: [limitações conhecidas, melhorias postergadas, riscos identificados]
 ```
 
 ---
 
-## Templates de Especificação por Tipo de Trabalho
+## Templates de Especificação
+
+As specs contêm os detalhes técnicos de implementação. São lidas pelo agente que implementa, não pelo time como um todo. Consulte sempre o `ENGINEERING_STANDARDS.md` ao preencher as seções de padrões e estratégia de testes.
 
 ### Template: Feature
 
+> Para tamanho Small, inclua apenas as seções 1 a 5 e 7. Seções condicionais se aplicam normalmente. Ao incluir uma seção condicional, remova o marcador `[CONDICIONAL]` do título.
+
 ~~~md
 ---
-title: [Título Conciso Descrevendo o Foco da Especificação]
+title: [Título Conciso]
 type: feature
-implementation_order: [número sequencial — ex.: 1]
-version: [ex.: 1.0]
+size: [small | medium | large]
+implementation_order: [número sequencial]
 date_created: [YYYY-MM-DD]
 last_updated: [YYYY-MM-DD]
-owner: [Equipe/Indivíduo responsável]
-tags: [lista de tags relevantes]
+jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 ---
 
 # Introdução
 
-[Breve introdução à especificação e ao objetivo que ela pretende atingir.]
+[O que esta spec entrega e qual responsabilidade ela cobre.]
 
 ## 1. Propósito & Escopo
 
-[O que esta spec cobre e o que está fora do escopo. Público-alvo e premissas assumidas.]
+**Em escopo**: [o que esta spec cobre]
+**Fora de escopo**: [o que esta spec não cobre — seja explícito]
 
-## 2. Definições
+## 2. Requisitos & Restrições
 
-[Siglas, abreviações e termos específicos do domínio usados nesta spec.]
+- **REQ-001**: [requisito funcional]
+- **CON-001**: [restrição técnica ou de negócio]
+- **GUD-001**: [diretriz recomendada — não obrigatória]
 
-## 3. Requisitos, Restrições & Diretrizes
+## 3. Contratos de Dados & Interfaces
 
-- **REQ-001**: Requisito funcional
-- **SEC-001**: Requisito de segurança
-- **CON-001**: Restrição técnica ou de negócio
-- **GUD-001**: Diretriz recomendada
+[Interfaces, endpoints REST, eventos Kafka, schemas de tabelas envolvidos. Consulte o `ENGINEERING_STANDARDS.md` para os padrões de contrato do time.]
 
-## 4. Interfaces & Contratos de Dados
-
-[Interfaces, APIs, contratos de dados e pontos de integração.]
-
-## 5. Critérios de Aceitação
+## 4. Critérios de Aceitação
 
 - **AC-001**: Dado [contexto], Quando [ação], Então [resultado esperado]
-- **AC-002**: O sistema deve [comportamento] quando [condição]
+- **AC-002**: Dado [contexto], Quando [ação], Então [resultado esperado]
 
-## 6. Estratégia de Automação de Testes
+## 5. Estratégia de Testes
 
-- **Níveis de Teste**: Unitário, Integração, Ponta a Ponta
-- **Frameworks**: [conforme stack do projeto]
-- **Gestão de Dados de Teste**: [criação e limpeza]
-- **Integração CI/CD**: [pipeline do projeto]
-- **Requisitos de Cobertura**: [limites mínimos]
-- **Testes de Performance**: [se aplicável]
+[O que testar, em qual nível (unitário/integração) e cenários críticos. Consulte o `ENGINEERING_STANDARDS.md` para os frameworks e padrões de teste do time.]
 
-## 7. Justificativa & Contexto
+## 6. Padrões Aplicáveis
 
-[Raciocínio por trás dos requisitos e decisões. Referencie o Design Document quando relevante.]
+[Liste os padrões do `ENGINEERING_STANDARDS.md` que se aplicam diretamente a esta spec. Não resuma os padrões — apenas referencie-os pelo nome para que o agente saiba quais consultar.]
 
-## 8. Dependências & Integrações Externas
-
-*Omita as categorias que não se aplicam ao escopo desta spec.*
-
-### Sistemas Externos
-- **EXT-001**: [Nome do sistema] - [Propósito e tipo de integração]
-
-### Serviços de Terceiros
-- **SVC-001**: [Nome do serviço] - [Capacidades e SLA requeridos]
-
-### Dependências de Infraestrutura
-- **INF-001**: [Componente] - [Requisitos e restrições]
-
-### Dependências de Dados
-- **DAT-001**: [Fonte de dados] - [Formato, frequência e acesso]
-
-### Dependências de Plataforma
-- **PLT-001**: [Plataforma/runtime] - [Restrições de versão e justificativa]
-
-### Conformidade
-- **COM-001**: [Requisito regulatório] - [Impacto na implementação]
-
-## 9. Exemplos & Casos Extremos
+## 7. Casos Extremos & Exemplos
 
 ```plaintext
 // Caso principal:
-//   <exemplo>
+//   <exemplo de entrada e saída esperada>
 //
-// Caso extremo ou de erro:
-//   <comportamento esperado>
+// Caso de erro:
+//   <entrada inválida e comportamento esperado>
 ```
 
-## 10. Critérios de Validação
+## [CONDICIONAL] 8. Propagação MDC / Headers Kafka
 
-[O que deve ser satisfeito para que esta spec seja considerada implementada corretamente.]
+> Incluir apenas se esta spec envolve novo consumer ou producer Kafka.
 
-## 11. Especificações Relacionadas / Leitura Adicional
+[Descreva os requisitos de propagação de contexto. Consulte o `ENGINEERING_STANDARDS.md` para os interceptors e campos MDC obrigatórios.]
 
-- [Spec Relacionada](./spec-NN-{titulo}.md) — [descrição do relacionamento]
-- [Documentação Externa](https://exemplo.com/docs) — [o que pode ser encontrado]
+## [CONDICIONAL] 9. Dados Sensíveis & Mascaramento
+
+> Incluir apenas se esta spec manipula PII ou dados financeiros.
+
+- Campos sensíveis identificados: [lista]
+- O que não deve aparecer em logs: [lista explícita]
+
+[Consulte o `ENGINEERING_STANDARDS.md` para a estratégia de mascaramento configurada no time.]
+
+## [CONDICIONAL] 10. Rollback Plan
+
+> Incluir apenas se esta spec altera endpoint público, contrato Kafka ou schema de tabela.
+
+- **Trigger**: [quando acionar rollback]
+- **Passos**: [sequência de ações para reverter]
+- **Impacto do rollback**: [o que é afetado ao reverter]
+
+## 11. Especificações Relacionadas
+
+- [spec-NN-{titulo}.md](./spec-NN-{titulo}.md) — [descrição do relacionamento]
 ~~~
 
 ---
@@ -410,41 +411,38 @@ tags: [lista de tags relevantes]
 
 ~~~md
 ---
-title: [Título Conciso Descrevendo o Bug]
+title: [Título Descrevendo o Bug]
 type: bug
-implementation_order: [número sequencial — ex.: 1]
+size: [small | medium | large]
+implementation_order: [número sequencial]
 date_created: [YYYY-MM-DD]
 last_updated: [YYYY-MM-DD]
-owner: [Equipe/Indivíduo responsável]
+jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 severity: [critical | high | medium | low]
-tags: [lista de tags relevantes]
 ---
 
 # Introdução
 
-[Descrição objetiva do bug: o que está acontecendo de errado e qual o impacto.]
+[O que está acontecendo de errado e qual o impacto observado.]
 
 ## 1. Propósito & Escopo
 
-[O que esta spec cobre para corrigir o bug e o que está fora do escopo desta correção.]
+**Em escopo**: [o que esta spec cobre para corrigir o bug]
+**Fora de escopo**: [o que não será alterado nesta correção]
 
-## 2. Definições
+## 2. Causa Raiz
 
-[Termos específicos do domínio usados nesta spec.]
-
-## 3. Causa Raiz
-
-- **Componente afetado**: [nome do módulo, serviço ou camada]
-- **Causa identificada**: [descrição técnica]
+- **Componente afetado**: [módulo, serviço ou camada]
+- **Causa identificada**: [descrição técnica da causa]
 - **Hipótese alternativa**: [se houver]
 
-## 4. Comportamento Atual vs. Esperado
+## 3. Comportamento Atual vs. Esperado
 
-| Aspecto | Comportamento Atual | Comportamento Esperado |
-|---------|--------------------|-----------------------|
+| Aspecto | Atual | Esperado |
+|---------|-------|----------|
 | [ex.: resposta da API] | [o que acontece] | [o que deveria acontecer] |
 
-## 5. Passos de Reprodução
+## 4. Passos de Reprodução
 
 **Pré-condições**: [estado inicial necessário]
 
@@ -454,31 +452,25 @@ tags: [lista de tags relevantes]
 
 **Ambiente**: [produção / staging / local]
 
-## 6. Requisitos da Correção
+## 5. Requisitos da Correção
 
 - **REQ-001**: A correção deve [comportamento esperado]
 - **CON-001**: A correção não deve alterar [contrato / interface existente]
 
-## 7. Interfaces & Contratos de Dados Afetados
-
-[Contratos de dados, APIs ou interfaces impactados pela correção.]
-
-## 8. Critérios de Aceitação
+## 6. Critérios de Aceitação
 
 - **AC-001**: Dado [contexto de reprodução], Quando [ação], Então [comportamento correto]
 - **AC-002**: Os cenários existentes de [funcionalidade relacionada] continuam funcionando
 
-## 9. Estratégia de Testes
+## 7. Estratégia de Testes
 
-- **Teste de regressão**: [como garantir que o bug não volta]
-- **Frameworks**: [conforme stack do projeto]
-- **Cenários a cobrir**: [lista de cenários críticos]
+[Como garantir que o bug não volta. Consulte o `ENGINEERING_STANDARDS.md` para frameworks e padrões de teste do time.]
 
-## 10. Dependências & Contexto Técnico
+## 8. Padrões Aplicáveis
 
-- **DEP-001**: [Dependência ou componente relacionado] - [como impacta a correção]
+[Liste os padrões do `ENGINEERING_STANDARDS.md` relevantes para esta correção.]
 
-## 11. Exemplos & Dados de Teste
+## 9. Casos Extremos & Dados de Teste
 
 ```plaintext
 // Entrada que causa o bug:
@@ -488,10 +480,16 @@ tags: [lista de tags relevantes]
 //   <exemplo>
 ```
 
-## 12. Especificações Relacionadas / Leitura Adicional
+## [CONDICIONAL] 10. Rollback Plan
 
-- [Spec Relacionada](./spec-NN-{titulo}.md) — [descrição]
-- [Documentação Externa](https://exemplo.com/docs) — [contexto relevante]
+> Incluir apenas se a correção altera endpoint público, contrato Kafka ou schema de tabela.
+
+- **Trigger**: [quando acionar rollback]
+- **Passos**: [sequência de ações para reverter]
+
+## 11. Especificações Relacionadas
+
+- [spec-NN-{titulo}.md](./spec-NN-{titulo}.md) — [descrição]
 ~~~
 
 ---
@@ -500,51 +498,45 @@ tags: [lista de tags relevantes]
 
 ~~~md
 ---
-title: [Título Conciso Descrevendo o Refactor]
+title: [Título Descrevendo o Refactor]
 type: refactor
-implementation_order: [número sequencial — ex.: 1]
+size: [small | medium | large]
+implementation_order: [número sequencial]
 date_created: [YYYY-MM-DD]
 last_updated: [YYYY-MM-DD]
-owner: [Equipe/Indivíduo responsável]
-tags: [lista de tags relevantes]
+jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 ---
 
 # Introdução
 
-[Descrição objetiva do que será refatorado e qual o ganho esperado.]
+[O que será refatorado e qual o ganho esperado.]
 
 ## 1. Propósito & Escopo
 
-**Em escopo**: [lista do que será refatorado]
-**Fora de escopo**: [lista do que não será alterado]
+**Em escopo**: [o que será refatorado]
+**Fora de escopo**: [o que não será alterado — seja explícito]
 
-## 2. Definições
+## 2. Motivação Técnica
 
-[Termos específicos usados nesta spec.]
-
-## 3. Motivação Técnica
-
-- **Problema atual**: [ex.: acoplamento, duplicação, complexidade ciclomática]
+- **Problema atual**: [ex.: violação de padrão do ENGINEERING_STANDARDS.md, acoplamento, duplicação]
 - **Impacto do problema**: [ex.: dificuldade de testar, risco de bugs]
-- **Métricas atuais** *(se disponíveis)*: [cobertura, tempo de build, dependências]
 
-## 4. Estado Atual vs. Estado Alvo
+## 3. Estado Atual vs. Estado Alvo
 
-| Aspecto | Estado Atual | Estado Alvo |
-|---------|-------------|-------------|
-| [ex.: estrutura de módulos] | [como está] | [como ficará] |
-| [ex.: cobertura de testes] | [% atual] | [% alvo] |
+| Aspecto | Atual | Alvo |
+|---------|-------|------|
+| [ex.: estrutura de pacotes] | [como está] | [como ficará] |
 
-## 5. Requisitos & Restrições
+## 4. Requisitos & Restrições
 
 - **REQ-001**: O comportamento externo observável deve permanecer idêntico
 - **CON-001**: A interface pública de [componente] não deve ser alterada
 
-## 6. Interfaces & Contratos Preservados
+## 5. Interfaces & Contratos Preservados
 
-[Contratos, APIs e interfaces que devem ser preservados sem alteração.]
+[Contratos, APIs e interfaces que não podem mudar.]
 
-## 7. Estratégia de Refactor
+## 6. Estratégia de Refactor
 
 1. [Primeiro passo]
 2. [Segundo passo]
@@ -552,56 +544,45 @@ tags: [lista de tags relevantes]
 
 **Riscos identificados**: [pontos de acoplamento, dados em produção afetados]
 
+## 7. Padrões Aplicáveis
+
+[Liste os padrões do `ENGINEERING_STANDARDS.md` que motivam ou guiam este refactor.]
+
 ## 8. Estratégia de Testes
 
-- **Abordagem**: [ex.: garantir cobertura antes de refatorar]
-- **Frameworks**: [conforme stack do projeto]
-- **Testes de regressão**: [o que deve ser validado ao final]
-- **Métricas de melhoria**: [como medir que o objetivo foi atingido]
+[Como garantir que nenhum comportamento externo foi alterado. Consulte o `ENGINEERING_STANDARDS.md` para frameworks e padrões de teste do time.]
 
 ## 9. Critérios de Aceitação
 
 - **AC-001**: Todos os testes existentes passam sem modificação de comportamento
-- **AC-002**: [Critério técnico de melhoria]
-- **AC-003**: A interface pública de [componente] permanece compatível com consumidores existentes
+- **AC-002**: [critério técnico de melhoria]
+- **AC-003**: A interface pública de [componente] permanece compatível com todos os consumidores
 
-## 10. Dependências & Componentes Afetados
-
-- **DEP-001**: [Componente afetado] - [natureza do impacto e ação necessária]
-
-## 11. Exemplos
+## 10. Exemplos
 
 ```plaintext
-// Antes do refactor:
+// Antes:
 //   <trecho representativo do estado atual>
 //
-// Depois do refactor:
+// Depois:
 //   <trecho representativo do estado alvo>
 ```
 
-## 12. Especificações Relacionadas / Leitura Adicional
+## 11. Especificações Relacionadas
 
-- [Spec Relacionada](./spec-NN-{titulo}.md) — [descrição]
-- [Documentação Externa](https://exemplo.com/docs) — [contexto relevante]
+- [spec-NN-{titulo}.md](./spec-NN-{titulo}.md) — [descrição]
 ~~~
 
 ---
 
-## Boas Práticas Gerais
+## Boas Práticas
 
 - Preencha `date_created` e `last_updated` com a data atual no formato `YYYY-MM-DD`.
-- Use linguagem precisa, explícita e sem ambiguidades.
-- Distinga claramente entre requisitos, restrições e recomendações.
-- Defina todas as siglas e termos específicos do domínio.
-- Garanta que cada spec seja autossuficiente — não exija que o leitor consulte outras specs para entender o escopo.
-- Cada spec deve cobrir uma única responsabilidade. Se o escopo exigir mais de três grupos de requisitos não relacionados, divida em specs separadas.
-- Ao referenciar specs internas, use sempre o caminho relativo (`./spec-NN-{titulo}.md`).
-- Se o Design Document de origem contiver `⚠️ requer definição`, sinalize a lacuna na spec — nunca preencha com suposições.
-- No modo express, se as respostas coletadas forem insuficientes para gerar critérios de aceitação testáveis, pergunte antes de gerar — specs sem AC são inutilizáveis para implementação.
-- No modo Jira, nunca gere specs com base em tickets vagos ou mal escritos. Agrupe todas as dúvidas em um único bloco de perguntas e aguarde as respostas antes de continuar — o custo de perguntar é menor que o custo de retrabalho.
-
----
-
-## Nota para Implementação
-
-O `IMPLEMENTATION.md` gerado contém a seção **Protocolo de Execução** com todas as regras de sequenciamento e o ciclo obrigatório por spec. Qualquer agente ou desenvolvedor que iniciar a implementação deve ler essa seção antes de escrever código.
+- O `TASK.md` usa linguagem clara e funcional — sem código, sem jargões desnecessários. As specs contêm os detalhes técnicos.
+- Cada spec cobre uma única responsabilidade. Se o escopo exigir mais de três grupos de requisitos não relacionados, divida em specs separadas.
+- Cada spec deve ser autossuficiente — o agente não deve precisar ler outras specs para entender o que implementar.
+- Nunca gere specs com base em informações insuficientes. Agrupe todas as dúvidas em um único bloco e aguarde resposta.
+- Campos marcados com `⚠️ requer definição` nunca devem ser preenchidos com suposições — sinalize e aguarde.
+- Seções condicionais só aparecem na spec se a condição foi ativada na Etapa 2. Ao incluir uma seção condicional, remova o marcador `[CONDICIONAL]` do título.
+- Para tamanho Small, inclua apenas as seções 1 a 5 e 7 do template de Feature.
+- Consulte sempre o `ENGINEERING_STANDARDS.md` diretamente — não faça suposições sobre os padrões do time.
