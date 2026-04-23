@@ -1,5 +1,7 @@
 # ARCHITECTURE.md — PSCC Team
 
+> Decisões estruturais: stack, organização de pacotes, camadas e padrões transversais. Para convenções de escrita de código, ver [ENGINEERING_STANDARDS.md](ENGINEERING_STANDARDS.md).
+
 ---
 
 ## Stack
@@ -41,8 +43,8 @@ com.nubank.{servico}/
 | Pacote | Responsabilidade |
 |---|---|
 | `controller` | Recebe a requisição HTTP e delega ao service |
-| `controller/request` | DTOs de entrada da API |
-| `controller/response` | DTOs de saída da API |
+| `controller/request` | Contratos de entrada da API |
+| `controller/response` | Contratos de saída da API |
 | `controller/api` | Contrato/interface da API exposta com anotações OpenAPI |
 | `service` | Lógica de negócio |
 | `model` | Representação dos dados e entidades do domínio |
@@ -376,7 +378,7 @@ public final class CustomerQueries {
 
     private CustomerQueries() {}
 
-    static final String FIND_BY_ID = """
+    public static final String FIND_BY_ID = """
             SELECT id, status
             FROM customers
             WHERE id = :customerId

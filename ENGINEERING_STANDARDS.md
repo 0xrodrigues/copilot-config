@@ -1,5 +1,7 @@
 # ENGINEERING_STANDARDS.md — PSCC Team
 
+> Convenções de como escrever código. Para decisões estruturais (stack, pacotes, camadas, tratamento de erros), ver [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ---
 
 ## Convenções de Idioma
@@ -47,7 +49,7 @@ Cada classe e cada método tem uma única razão para mudar.
 ```java
 // ❌ Errado — método faz validação, busca e montagem de resposta ao mesmo tempo
 public EligibilityResponse check(EligibilityRequest request) {
-    if (request.customerId() == null) throw new BusinessException("Id obrigatório");
+    if (request.customerId() == null) throw new BusinessException(CustomerError.CUSTOMER_NOT_FOUND);
     var customer = jdbc.query(...);
     var product = jdbc.query(...);
     // lógica de elegibilidade misturada com montagem de response
@@ -94,7 +96,7 @@ try {
     return repository.findById(id);
 } catch (DataAccessException e) {
     log.error("Falha ao buscar cliente com id {}", id, e);
-    throw new BusinessException("Erro ao consultar cliente");
+    throw new BusinessException(CustomerError.CUSTOMER_NOT_FOUND);
 }
 ```
 
@@ -175,6 +177,36 @@ Regras:
 - `@Getter` em classes de model quando necessário
 - `@Builder` em classes de response quando a montagem tem muitos campos
 - Nunca usar `@Data` em classes de domínio — gera `equals`, `hashCode` e `toString` que podem causar problemas não intencionais
+
+---
+
+## `record` vs `class`
+
+**`record`** para tudo que cruza fronteira de camada — `Request`, `Response`, `ErrorResponse`.
+
+**`class`** para tudo que vive dentro do serviço — `Model`, exceções, componentes Spring.
+
+```java
+// ✅ Request e Response — record (imutável, contrato de entrada/saída)
+public record CreateCustomerRequest(
+        @NotNull(message = "Id do cliente é obrigatório")
+        Long customerId
+) {}
+
+public record CreateCustomerResponse(Long customerId, String status) {}
+
+// ✅ Model — class (dado interno, construção pode ser complexa)
+public class CustomerEligibility {
+    private Long id;
+    private String status;
+}
+```
+
+Regras:
+- `record` em `Request`, `Response` e `ErrorResponse` — imutáveis por natureza, `equals`/`hashCode`/`toString` gerados ajudam nos testes
+- `class` em `Model` — RowMapper e builders precisam de flexibilidade; a regra "nunca `@Data` em domínio" continua valendo
+- `class` em exceções — herança obriga
+- `class` em components Spring (`@Service`, `@Repository`, `@Component`) — gerenciados pelo container
 
 ---
 
