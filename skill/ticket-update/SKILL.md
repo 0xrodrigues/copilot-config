@@ -1,5 +1,5 @@
 ---
-name: update-from-task
+name: ticket-update
 description: 'Lê um TASK.md com status completed e executa todas as atualizações externas: atualiza sub-tarefas e ticket pai no Jira, e publica documentação no Confluence. Deve ser executada apenas após a implementação estar concluída.'
 ---
 
