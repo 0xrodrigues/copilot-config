@@ -19,7 +19,7 @@ Esta skill opera em dois modos:
 
 Antes de qualquer outra ação, leia dois arquivos na raiz do projeto:
 
-**1. `ENGINEERING_STANDARDS.md`** — se existir, use-o como referência durante toda a geração das specs. Não resuma seu conteúdo aqui — consulte-o diretamente sempre que precisar saber os padrões, convenções e decisões arquiteturais do time.
+**1. `docs/AGENTS.md`** — se existir, é o índice de todos os padrões do time. Não leia todos os arquivos que ele referencia — use-o como mapa. Navegue até os documentos específicos em `docs/patterns/` apenas quando precisar de informação concreta sobre aquele padrão.
 
 **2. `TASK.md` na raiz** — se existir, leia para entender o contexto de trabalho em andamento antes de criar novos arquivos.
 
@@ -135,9 +135,18 @@ Verifique se o trabalho se enquadra em algum dos casos abaixo e ative as seçõe
 | Envolve dados sensíveis (PII, financeiro) | Mascaramento e segurança |
 | Mudança em query crítica ou schema | Impacto em dados existentes |
 
+### Padrões obrigatórios em toda spec de feature ou bug
+
+Independente do contexto, toda spec de `feature` ou `bug` deve incluir na seção **Padrões Aplicáveis**:
+
+- `docs/patterns/logging.md` — pontos obrigatórios de log por camada
+- `docs/patterns/conventions/language.md` — idioma de logs e mensagens
+
+E deve incluir a seção **Pontos de Log** declarando explicitamente, por camada coberta pela spec, quais eventos serão logados, em qual nível e com quais campos. O agente não deve decidir isso em runtime.
+
 ### Ordem de specs
 
-Ao dividir responsabilidades, use a sequência natural do stack do time como referência — consulte o `ENGINEERING_STANDARDS.md` para a ordem correta. Specs sem dependências externas vêm primeiro. A numeração reflete a ordem obrigatória de implementação.
+Ao dividir responsabilidades, use a sequência natural do stack do time como referência — consulte `docs/patterns/stack.md` e `docs/patterns/package-structure.md` para entender as camadas e a ordem correta. Specs sem dependências externas vêm primeiro. A numeração reflete a ordem obrigatória de implementação.
 
 ### Apresentação do plano
 
@@ -275,7 +284,7 @@ Situações que exigem parada obrigatória:
 - A spec descreve um comportamento que conflita com o código existente
 - A spec não cobre um caso de erro identificado durante a implementação
 - Implementar a spec exige alterar algo fora do escopo declarado
-- Há dúvida sobre qual padrão do `ENGINEERING_STANDARDS.md` se aplica
+- Há dúvida sobre qual padrão em `docs/patterns/` se aplica
 
 **Conclusão da implementação:**
 
@@ -318,7 +327,7 @@ Quando todas as specs estiverem `done`:
 
 ## Templates de Especificação
 
-As specs contêm os detalhes técnicos de implementação. São lidas pelo agente que implementa, não pelo time como um todo. Consulte sempre o `ENGINEERING_STANDARDS.md` ao preencher as seções de padrões e estratégia de testes.
+As specs contêm os detalhes técnicos de implementação. São lidas pelo agente que implementa, não pelo time como um todo. Ao preencher seções de padrões e estratégia de testes, navegue pelos arquivos em `docs/patterns/` via `docs/AGENTS.md` — não suponha os padrões do time.
 
 ### Template: Feature
 
@@ -334,6 +343,8 @@ date_created: [YYYY-MM-DD]
 last_updated: [YYYY-MM-DD]
 jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 ---
+
+> Em caso de dúvida sobre padrões, convenções ou decisões arquiteturais durante a implementação, consulte `docs/AGENTS.md`.
 
 # Introdução
 
@@ -352,7 +363,7 @@ jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 
 ## 3. Contratos de Dados & Interfaces
 
-[Interfaces, endpoints REST, eventos Kafka, schemas de tabelas envolvidos. Consulte o `ENGINEERING_STANDARDS.md` para os padrões de contrato do time.]
+[Interfaces, endpoints REST, eventos Kafka, schemas de tabelas envolvidos. Consulte `docs/patterns/layers/controller.md` para os padrões de contrato do time.]
 
 ## 4. Critérios de Aceitação
 
@@ -361,11 +372,25 @@ jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 
 ## 5. Estratégia de Testes
 
-[O que testar, em qual nível (unitário/integração) e cenários críticos. Consulte o `ENGINEERING_STANDARDS.md` para os frameworks e padrões de teste do time.]
+[O que testar, em qual nível (unitário/integração) e cenários críticos. Consulte `docs/patterns/testing.md` para os frameworks e padrões de teste do time.]
 
-## 6. Padrões Aplicáveis
+## 6. Pontos de Log
 
-[Liste os padrões do `ENGINEERING_STANDARDS.md` que se aplicam diretamente a esta spec. Não resuma os padrões — apenas referencie-os pelo nome para que o agente saiba quais consultar.]
+> Seção obrigatória em toda spec de feature ou bug. Declare explicitamente os pontos de log por camada coberta por esta spec. Consulte `docs/patterns/logging.md` para níveis e campos obrigatórios.
+
+| Camada | Evento | Nível | Campos obrigatórios |
+|--------|--------|-------|---------------------|
+| Controller | [ex.: requisição recebida] | INFO | [ex.: nuCustomer, operationType] |
+| Service | [ex.: desvio de negócio identificado] | WARN | [ex.: motivo, nuCustomer] |
+| Repository | [ex.: consulta executada] | INFO | [ex.: parâmetros da query] |
+
+## 7. Padrões Aplicáveis
+
+[Liste os arquivos de `docs/patterns/` que se aplicam diretamente a esta spec, pelo caminho relativo. Não resuma o conteúdo — apenas referencie para que o agente saiba quais abrir durante a implementação.]
+
+Obrigatórios em toda spec de feature ou bug:
+- `docs/patterns/logging.md`
+- `docs/patterns/conventions/language.md`
 
 ## 7. Casos Extremos & Exemplos
 
@@ -381,7 +406,7 @@ jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 
 > Incluir apenas se esta spec envolve novo consumer ou producer Kafka.
 
-[Descreva os requisitos de propagação de contexto. Consulte o `ENGINEERING_STANDARDS.md` para os interceptors e campos MDC obrigatórios.]
+[Descreva os requisitos de propagação de contexto. Consulte `docs/patterns/logging.md` para os interceptors e campos MDC obrigatórios.]
 
 ## [CONDICIONAL] 9. Dados Sensíveis & Mascaramento
 
@@ -390,7 +415,7 @@ jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 - Campos sensíveis identificados: [lista]
 - O que não deve aparecer em logs: [lista explícita]
 
-[Consulte o `ENGINEERING_STANDARDS.md` para a estratégia de mascaramento configurada no time.]
+[Consulte `docs/patterns/logging.md` para a estratégia de mascaramento configurada no time.]
 
 ## [CONDICIONAL] 10. Rollback Plan
 
@@ -420,6 +445,8 @@ last_updated: [YYYY-MM-DD]
 jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 severity: [critical | high | medium | low]
 ---
+
+> Em caso de dúvida sobre padrões, convenções ou decisões arquiteturais durante a implementação, consulte `docs/AGENTS.md`.
 
 # Introdução
 
@@ -464,11 +491,23 @@ severity: [critical | high | medium | low]
 
 ## 7. Estratégia de Testes
 
-[Como garantir que o bug não volta. Consulte o `ENGINEERING_STANDARDS.md` para frameworks e padrões de teste do time.]
+[Como garantir que o bug não volta. Consulte `docs/patterns/testing.md` para frameworks e padrões de teste do time.]
 
-## 8. Padrões Aplicáveis
+## 8. Pontos de Log
 
-[Liste os padrões do `ENGINEERING_STANDARDS.md` relevantes para esta correção.]
+> Seção obrigatória. Declare os pontos de log impactados ou adicionados por esta correção. Consulte `docs/patterns/logging.md`.
+
+| Camada | Evento | Nível | Campos obrigatórios |
+|--------|--------|-------|---------------------|
+| [camada] | [evento] | [nível] | [campos] |
+
+## 9. Padrões Aplicáveis
+
+[Liste os arquivos de `docs/patterns/` relevantes para esta correção, pelo caminho relativo.]
+
+Obrigatórios em toda spec de feature ou bug:
+- `docs/patterns/logging.md`
+- `docs/patterns/conventions/language.md`
 
 ## 9. Casos Extremos & Dados de Teste
 
@@ -507,6 +546,8 @@ last_updated: [YYYY-MM-DD]
 jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 ---
 
+> Em caso de dúvida sobre padrões, convenções ou decisões arquiteturais durante a implementação, consulte `docs/AGENTS.md`.
+
 # Introdução
 
 [O que será refatorado e qual o ganho esperado.]
@@ -518,7 +559,7 @@ jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 
 ## 2. Motivação Técnica
 
-- **Problema atual**: [ex.: violação de padrão do ENGINEERING_STANDARDS.md, acoplamento, duplicação]
+- **Problema atual**: [ex.: violação de padrão em `docs/patterns/`, acoplamento, duplicação]
 - **Impacto do problema**: [ex.: dificuldade de testar, risco de bugs]
 
 ## 3. Estado Atual vs. Estado Alvo
@@ -546,11 +587,11 @@ jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 
 ## 7. Padrões Aplicáveis
 
-[Liste os padrões do `ENGINEERING_STANDARDS.md` que motivam ou guiam este refactor.]
+[Liste os arquivos de `docs/patterns/` que motivam ou guiam este refactor, pelo caminho relativo.]
 
 ## 8. Estratégia de Testes
 
-[Como garantir que nenhum comportamento externo foi alterado. Consulte o `ENGINEERING_STANDARDS.md` para frameworks e padrões de teste do time.]
+[Como garantir que nenhum comportamento externo foi alterado. Consulte `docs/patterns/testing.md` para frameworks e padrões de teste do time.]
 
 ## 9. Critérios de Aceitação
 
@@ -585,4 +626,4 @@ jira_subtask: [ID da sub-tarefa — omitir se Modo Express]
 - Campos marcados com `⚠️ requer definição` nunca devem ser preenchidos com suposições — sinalize e aguarde.
 - Seções condicionais só aparecem na spec se a condição foi ativada na Etapa 2. Ao incluir uma seção condicional, remova o marcador `[CONDICIONAL]` do título.
 - Para tamanho Small, inclua apenas as seções 1 a 5 e 7 do template de Feature.
-- Consulte sempre o `ENGINEERING_STANDARDS.md` diretamente — não faça suposições sobre os padrões do time.
+- Consulte sempre `docs/AGENTS.md` como ponto de entrada — navegue até os arquivos específicos de `docs/patterns/` conforme necessário. Não suponha os padrões do time.
